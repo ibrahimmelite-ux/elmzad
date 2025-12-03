@@ -59,14 +59,15 @@ export default function MyListingsPage() {
       return;
     }
 
-    async function loadListings() {
+    // ✅ Take user as a parameter so TS knows it's not null inside
+    async function loadListings(currentUser: User) {
       setLoadingListings(true);
       setError(null);
 
       const { data, error } = await supabase
         .from("marketplace_listings")
         .select("*")
-        .eq("seller_id", user.id)
+        .eq("seller_id", currentUser.id)
         .order("id", { ascending: false });
 
       if (error) {
@@ -80,7 +81,8 @@ export default function MyListingsPage() {
       setLoadingListings(false);
     }
 
-    loadListings();
+    // Call with the actual, non-null user
+    loadListings(user);
   }, [user]);
 
   // Relist handler (default: +72 hours, reset current_bid)
