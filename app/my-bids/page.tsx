@@ -20,6 +20,8 @@ type BidRow = {
     current_bid: number | string;
     starting_price: number | string;
     ends_at: string;
+    status?: string | null;
+    buyer_id?: string | null;
   } | null;
 };
 
@@ -49,13 +51,15 @@ export default function MyBidsPage() {
 
   // Load bids for this user
   useEffect(() => {
+    // If no user, clear bids and stop
     if (!user) {
       setBids([]);
       setLoadingBids(false);
       return;
     }
 
-    async function loadBids() {
+    // ✅ Put user into a parameter so TypeScript knows it is NOT null
+    async function loadBids(currentUser: User) {
       setLoadingBids(true);
       setError(null);
 
@@ -72,11 +76,13 @@ export default function MyBidsPage() {
             image_url,
             current_bid,
             starting_price,
-            ends_at
+            ends_at,
+            status,
+            buyer_id
           )
         `
         )
-        .eq("bidder_id", user.id)
+        .eq("bidder_id", currentUser.id)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -99,6 +105,8 @@ export default function MyBidsPage() {
                 current_bid: row.listing.current_bid,
                 starting_price: row.listing.starting_price,
                 ends_at: row.listing.ends_at,
+                status: row.listing.status,
+                buyer_id: row.listing.buyer_id,
               }
             : null,
         })) ?? [];
@@ -107,7 +115,8 @@ export default function MyBidsPage() {
       setLoadingBids(false);
     }
 
-    loadBids();
+    // Call with a guaranteed non-null user
+    loadBids(user);
   }, [user]);
 
   // ---- States: loading / not logged in -------------------------------------
@@ -156,9 +165,7 @@ export default function MyBidsPage() {
       <div className="mx-auto w-full max-w-5xl">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-neutral-900">
-              My bids
-            </h1>
+            <h1 className="text-xl font-semibold text-neutral-900">My bids</h1>
             <p className="mt-1 text-xs text-neutral-500">
               These are the bids you&apos;ve placed on Elmzad listings.
             </p>
@@ -206,12 +213,15 @@ export default function MyBidsPage() {
           <div className="space-y-3">
             {bids.map((bid) => {
               const listing = bid.listing;
-              const currentBid = listing
-                ? Number(listing.current_bid)
-                : null;
+
+              const currentBid = listing ? Number(listing.current_bid) : null;
               const startingPrice = listing
                 ? Number(listing.starting_price)
                 : null;
+
+              const isSold = listing?.status === "sold";
+              const isWinner =
+                isSold && listing?.buyer_id && listing.buyer_id === user.id;
 
               return (
                 <div
@@ -281,14 +291,22 @@ export default function MyBidsPage() {
                       </p>
                     )}
 
+                    {isWinner && (
+                      <p className="mt-1 inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[11px] font-medium text-green-700 border border-green-200">
+                        🎉 You won this item
+                      </p>
+                    )}
+
                     {listing && (
-                      <Link
-                        href={`/listing/${listing.id}`}
-                        className="mt-1 inline-block text-[11px] font-medium"
-                        style={{ color: BRAND_RED }}
-                      >
-                        View listing →
-                      </Link>
+                      <div className="mt-1">
+                        <Link
+                          href={`/listing/${listing.id}`}
+                          className="inline-block text-[11px] font-medium"
+                          style={{ color: BRAND_RED }}
+                        >
+                          View listing →
+                        </Link>
+                      </div>
                     )}
                   </div>
                 </div>
